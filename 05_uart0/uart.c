@@ -63,11 +63,6 @@ void uart_init()
     r&=~((7<<12)|(7<<15)); // gpio14, gpio15
     r|=(4<<12)|(4<<15);    // alt0
     *GPFSEL1 = r;
-    *GPPUD = 0;            // enable pins 14 and 15
-    r=150; while(r--) { asm volatile("nop"); }
-    *GPPUDCLK0 = (1<<14)|(1<<15);
-    r=150; while(r--) { asm volatile("nop"); }
-    *GPPUDCLK0 = 0;        // flush GPIO setup
 
     *UART0_ICR = 0x7FF;    // clear interrupts
     *UART0_IBRD = 2;       // 115200 baud
