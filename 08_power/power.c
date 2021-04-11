@@ -55,11 +55,6 @@ void power_off()
 
     // power off gpio pins (but not VCC pins)
     *GPFSEL0 = 0; *GPFSEL1 = 0; *GPFSEL2 = 0; *GPFSEL3 = 0; *GPFSEL4 = 0; *GPFSEL5 = 0;
-    *GPPUD = 0;
-    wait_cycles(150);
-    *GPPUDCLK0 = 0xffffffff; *GPPUDCLK1 = 0xffffffff;
-    wait_cycles(150);
-    *GPPUDCLK0 = 0; *GPPUDCLK1 = 0;        // flush GPIO setup
 
     // power off the SoC (GPU + CPU)
     r = *PM_RSTS; r &= ~0xfffffaaa;
