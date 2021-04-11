@@ -70,6 +70,13 @@ void mmu_init()
         PT_ISH |      // inner shareable
         PT_MEM;       // normal memory
 
+    paging[3]=(unsigned long)((unsigned char*)&_end+6*PAGESIZE) |    // physical address
+        PT_PAGE |     // it has the "Present" flag, which must be set, and we have area in it mapped by pages
+        PT_AF |       // accessed flag. Without this we're going to have a Data Abort exception
+        PT_USER |     // non-privileged
+        PT_ISH |      // inner shareable
+        PT_MEM;       // normal memory
+
     // identity L2, first 2M block
     paging[2*512]=(unsigned long)((unsigned char*)&_end+3*PAGESIZE) | // physical address
         PT_PAGE |     // we have area in it mapped by pages
@@ -88,6 +95,15 @@ void mmu_init()
         PT_NX |       // no execute
         PT_USER |     // non-privileged
         (r>=b? PT_OSH|PT_DEV : PT_ISH|PT_MEM); // different attributes for device memory
+
+    // cover the MMIO_BASE range
+    for(r=0;r<512;r++)
+        paging[6*512+r]=(unsigned long)(((r + 3 * 512)<<21)) |  // physical address
+        PT_BLOCK |    // map 2M block
+        PT_AF |       // accessed flag
+        PT_NX |       // no execute
+        PT_USER |     // non-privileged
+        ((r + 3 * 512)>=b? PT_OSH|PT_DEV : PT_ISH|PT_MEM); // different attributes for device memory
 
     // identity L3
     for(r=0;r<512;r++)
