@@ -70,6 +70,13 @@ void mmu_init()
         PT_ISH |      // inner shareable
         PT_MEM;       // normal memory
 
+    paging[3]=(unsigned long)((unsigned char*)&_end+4*PAGESIZE) |    // physical address
+        PT_PAGE |     // it has the "Present" flag, which must be set, and we have area in it mapped by pages
+        PT_AF |       // accessed flag. Without this we're going to have a Data Abort exception
+        PT_USER |     // non-privileged
+        PT_ISH |      // inner shareable
+        PT_MEM;       // normal memory
+
     // identity L2, first 2M block
     paging[2*512]=(unsigned long)((unsigned char*)&_end+3*PAGESIZE) | // physical address
         PT_PAGE |     // we have area in it mapped by pages
@@ -98,30 +105,13 @@ void mmu_init()
         PT_ISH |      // inner shareable
         ((r<0x80||r>data_page)? PT_RW|PT_NX : PT_RO); // different for code and data
 
-    // TTBR1, kernel L1
-    paging[512+511]=(unsigned long)((unsigned char*)&_end+4*PAGESIZE) | // physical address
-        PT_PAGE |     // we have area in it mapped by pages
-        PT_AF |       // accessed flag
-        PT_KERNEL |   // privileged
-        PT_ISH |      // inner shareable
-        PT_MEM;       // normal memory
-
-    // kernel L2
-    paging[4*512+511]=(unsigned long)((unsigned char*)&_end+5*PAGESIZE) |   // physical address
-        PT_PAGE |     // we have area in it mapped by pages
-        PT_AF |       // accessed flag
-        PT_KERNEL |   // privileged
-        PT_ISH |      // inner shareable
-        PT_MEM;       // normal memory
-
-    // kernel L3
-    paging[5*512]=(unsigned long)(MMIO_BASE+0x00201000) |   // physical address
-        PT_PAGE |     // map 4k
+    for(r=0;r<512;r++)
+        paging[4*512+r]=(unsigned long)(((512 * 3 + r)<<21)) |  // physical address
+        PT_BLOCK |    // map 2M block
         PT_AF |       // accessed flag
         PT_NX |       // no execute
-        PT_KERNEL |   // privileged
-        PT_OSH |      // outter shareable
-        PT_DEV;       // device memory
+        PT_USER |     // non-privileged
+        ((512 * 3 + r)>=b? PT_OSH|PT_DEV : PT_ISH|PT_MEM); // different attributes for device memory
 
     /* okay, now we have to set system registers to enable MMU */
 
@@ -160,7 +150,7 @@ void mmu_init()
     // lower half, user space
     asm volatile ("msr ttbr0_el1, %0" : : "r" ((unsigned long)&_end + TTBR_ENABLE));
     // upper half, kernel space
-    asm volatile ("msr ttbr1_el1, %0" : : "r" ((unsigned long)&_end + TTBR_ENABLE + PAGESIZE));
+    asm volatile ("msr ttbr1_el1, %0" : : "r" ((unsigned long)&_end + TTBR_ENABLE));
 
     // finally, toggle some bits in system control register to enable page translation
     asm volatile ("dsb ish; isb; mrs %0, sctlr_el1" : "=r" (r));
